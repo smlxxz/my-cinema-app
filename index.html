@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة مَطَر - السينما الجماعية</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #141414; color: white; }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 50px;
+            background: #141414;
+            border-bottom: 1px solid #282828;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        /* خط مَطَر الأزرق الفخم والمضيء */
+        .logo-container {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00bfff;
+            text-decoration: none;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            text-shadow: 0 0 10px rgba(0, 191, 255, 0.6), 0 0 20px rgba(0, 115, 230, 0.4);
+            font-family: 'Amiri', 'Traditional Arabic', 'Times New Roman', serif;
+        }
+        
+        /* أزرار التصفح على اليسار */
+        .nav-links { display: flex; align-items: center; gap: 30px; }
+        .nav-links button { 
+            background: none; 
+            border: none; 
+            color: #b3b3b3; 
+            font-size: 1.1rem; 
+            cursor: pointer; 
+            transition: color 0.2s; 
+            padding: 5px 0;
+        }
+        .nav-links button:hover, .nav-links button.active { 
+            color: #fff; 
+            font-weight: bold;
+            border-bottom: 2px solid #0099FF;
+        }
+        
+        .container { padding: 110px 50px 50px 50px; }
+        .container h2 { font-size: 1.8rem; margin-bottom: 25px; font-weight: 500; color: #ffffff; }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        .media-card {
+            background: #1f1f1f;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        .media-card:hover { 
+            transform: scale(1.06); 
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .media-card img { width: 100%; height: 270px; object-fit: cover; }
+        .media-card .title {
+            padding: 12px;
+            font-size: 0.95rem;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #fff;
+        }
+
+        /* نافذة المشغل */
+        #player-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .player-header {
+            width: 85%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .selectors {
+            display: none;
+            gap: 10px;
+        }
+        .selectors select, .server-selector {
+            background: #222;
+            color: white;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .player-content {
+            width: 85%;
+            height: 72%;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .player-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .close-btn {
+            margin-top: 15px;
+            background: #e50914;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .close-btn:hover { background: #f40612; }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="/" class="logo-container">مَطَر</a>
+        
+        <nav class="nav-links">
+            <button id="btn-all" class="active" onclick="filterMedia('all', this)">الرئيسية</button>
+            <button id="btn-movie" onclick="filterMedia('movie', this)">الأفلام</button>
+            <button id="btn-tv" onclick="filterMedia('tv', this)">المسلسلات</button>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h2 id="section-title"> الرئيسية  </h2>
+        <div id="media-grid" class="grid"></div>
+    </main>
+
+    <!-- مشغل الفيديو -->
+    <div id="player-modal">
+        <div class="player-header">
+            <div id="tv-selectors" class="selectors">
+                <div>
+                    <select id="season-select" onchange="onSeasonChange()"></select>
+                </div>
+                <div>
+                    <select id="episode-select" onchange="updatePlayerUrl()"></select>
+                </div>
+            </div>
+            <div>
+                <label style="color: #aaa; font-size: 0.9rem; margin-left: 5px;">السيرفر:</label>
+                <select id="server-select" class="server-selector" onchange="updatePlayerUrl()">
+                    <option value="vidsrc-cc">سيرفر 1 (VidSrc CC)</option>
+                    <option value="vidsrc-xyz">سيرفر 2 (VidSrc XYZ)</option>
+                    <option value="multiembed">سيرفر 3 (MultiEmbed)</option>
+                </select>
+            </div>
+        </div>
+        <div class="player-content">
+            <iframe id="video-iframe" src="" allowfullscreen allow="autoplay; fullscreen"></iframe>
+        </div>
+        <button class="close-btn" onclick="closePlayer()">إغلاق </button>
+    </div>
+
+    <script>
+        let allMediaData = [];
+        let currentShowId = null;
+        let currentMediaType = null;
+        let currentShowDetails = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchAllMedia();
+        });
+
+        async function fetchAllMedia() {
+            try {
+                const response = await fetch('/api/media');
+                allMediaData = await response.json();
+                displayMedia(allMediaData);
+            } catch (err) {
+                console.error('خطأ أثناء جلب الأفلام:', err);
+            }
+        }
+
+        function displayMedia(data) {
+            const grid = document.getElementById('media-grid');
+            grid.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                grid.innerHTML = '<p style="color: #888;">لا توجد عناصر لعرضها حالياً.</p>';
+                return;
+            }
+
+            data.forEach(item => {
+                const title = item.title || item.name || 'بدون عنوان';
+                const poster = item.poster_path 
+                    ? `https://image.tmdb.org/t/p/w500${item.poster_path}` 
+                    : 'https://via.placeholder.com/180x270?text=No+Image';
+                
+                let mediaType = item.media_type;
+                if (!mediaType) {
+                    mediaType = item.title ? 'movie' : 'tv';
+                }
+
+                const card = document.createElement('div');
+                card.className = 'media-card';
+                card.onclick = () => openPlayer(mediaType, item.id);
+                card.innerHTML = `
+                    <img src="${poster}" alt="${title}" loading="lazy">
+                    <div class="title">${title}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterMedia(type, btn) {
+            document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const titleElem = document.getElementById('section-title');
+
+            if (type === 'all') {
+                titleElem.innerText = 'أضخم مكتبة للأفلام والمسلسلات';
+                displayMedia(allMediaData);
+            } else if (type === 'movie') {
+                titleElem.innerText = 'قائمة الأفلام';
+                const movies = allMediaData.filter(item => {
+                    return item.media_type === 'movie' || (!item.media_type && item.title && !item.name);
+                });
+                displayMedia(movies);
+            } else if (type === 'tv') {
+                titleElem.innerText = 'قائمة المسلسلات';
+                const tvShows = allMediaData.filter(item => {
+                    return item.media_type === 'tv' || (!item.media_type && item.name);
+                });
+                displayMedia(tvShows);
+            }
+        }
+
+        async function openPlayer(type, id) {
+            currentMediaType = type;
+            currentShowId = id;
+            const modal = document.getElementById('player-modal');
+            const tvSelectors = document.getElementById('tv-selectors');
+
+            if (type === 'tv') {
+                tvSelectors.style.display = 'flex';
+                
+                try {
+                    const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=ca894982ff5cf95781a7fc56dfaa369e&language=ar`);
+                    currentShowDetails = await res.json();
+                    
+                    let seasonOptions = '';
+                    if (currentShowDetails.seasons) {
+                        currentShowDetails.seasons.forEach(season => {
+                            if (season.season_number > 0) {
+                                seasonOptions += `<option value="${season.season_number}">الموسم ${season.season_number} (${season.episode_count} حلقة)</option>`;
+                            }
+                        });
+                    }
+                    if (!seasonOptions) seasonOptions = `<option value="1">الموسم 1</option>`;
+                    document.getElementById('season-select').innerHTML = seasonOptions;
+                    
+                    updateEpisodesForSeason(1);
+                } catch(e) {
+                    document.getElementById('season-select').innerHTML = `<option value="1">الموسم 1</option>`;
+                    document.getElementById('episode-select').innerHTML = `<option value="1">الحلقة 1</option>`;
+                }
+            } else {
+                tvSelectors.style.display = 'none';
+            }
+
+            updatePlayerUrl();
+            modal.style.display = 'flex';
+        }
+
+        function onSeasonChange() {
+            const seasonNum = document.getElementById('season-select').value;
+            updateEpisodesForSeason(seasonNum);
+            updatePlayerUrl();
+        }
+
+        function updateEpisodesForSeason(seasonNum) {
+            const episodeSelect = document.getElementById('episode-select');
+            let episodeCount = 20;
+
+            if (currentShowDetails && currentShowDetails.seasons) {
+                const foundSeason = currentShowDetails.seasons.find(s => s.season_number == seasonNum);
+                if (foundSeason) {
+                    episodeCount = foundSeason.episode_count || 20;
+                }
+            }
+
+            let episodeOptions = '';
+            for(let e=1; e<=episodeCount; e++) {
+                episodeOptions += `<option value="${e}">الحلقة ${e}</option>`;
+            }
+            episodeSelect.innerHTML = episodeOptions;
+        }
+
+        function updatePlayerUrl() {
+            const iframe = document.getElementById('video-iframe');
+            const server = document.getElementById('server-select').value;
+            let url = '';
+
+            if (currentMediaType === 'tv') {
+                const season = document.getElementById('season-select').value || 1;
+                const episode = document.getElementById('episode-select').value || 1;
+
+                if (server === 'vidsrc-cc') {
+                    url = `https://vidsrc.cc/v2/embed/tv/${currentShowId}/${season}/${episode}`;
+                } else if (server === 'vidsrc-xyz') {
+                    url = `https://vidsrc.xyz/embed/tv?tmdb=${currentShowId}&season=${season}&episode=${episode}`;
+                } else if (server === 'multiembed') {
+                    url = `https://multiembed.mov/?video_id=${currentShowId}&tmdb=1&s=${season}&e=${episode}`;
+                }
+            } else {
+                if (server === 'vidsrc-cc') {
+                    url = `https://vidsrc.cc/v2/embed/movie/${currentShowId}`;
+                } else if (server === 'vidsrc-xyz') {
+                    url = `https://vidsrc.xyz/embed/movie?tmdb=${currentShowId}`;
+                } else if (server === 'multiembed') {
+                    url = `https://multiembed.mov/?video_id=${currentShowId}&tmdb=1`;
+                }
+            }
+
+            iframe.src = url;
+        }
+
+        function closePlayer() {
+            const modal = document.getElementById('player-modal');
+            const iframe = document.getElementById('video-iframe');
+            iframe.src = '';
+            modal.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
